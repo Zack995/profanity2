@@ -58,9 +58,8 @@ system_profiler SPDisplaysDataType | grep -A5 "Metal Family"
 **macOS 特别说明：**
 
 - ✅ **无需额外 GPU 驱动**：Apple Silicon 内置完美的 OpenCL 支持
-- ✅ **自动电源管理**：系统会根据温度自动调节 GPU 频率
+- ✅ **自动电源管理**：系统会智能调节 GPU 性能
 - ✅ **统一内存优势**：CPU 和 GPU 共享内存，数据传输速度更快
-- ⚠️ **散热建议**：长时间运行建议确保良好通风或使用散热支架
 
 #### Ubuntu/Debian
 
@@ -547,20 +546,10 @@ sudo pmset -g thermstate
 sudo pmset -a gpuswitch 2  # 强制使用独立显卡（如果有）
 ```
 
-**散热问题解决：**
-
-```bash
-# 监控温度
-sudo powermetrics -n 1 -i 1000 --samplers smc_temp
-
-# 如果温度过高，降低工作强度
-./profanity2 --inverse-multiple 4096 --work 32 --leading f -z [公钥]
-```
-
 **电源问题：**
 
 ```bash
-# 确保使用电源适配器而非电池运行
+# 检查电源状态
 system_profiler SPPowerDataType | grep "Connected"
 
 # 临时禁用节能模式
@@ -639,7 +628,7 @@ python3 gen_eth_key.py
 # 3. 高性能模式运行（M1 Max/M2 Max/M3 Max/M4 Max）
 ./profanity2 --leading 8 --inverse-multiple 16384 --work 64 -z [128字符公钥]
 
-# 4. 低功耗模式运行（适合 MacBook 电池使用）
+# 4. 低功耗模式运行
 ./profanity2 --leading 8 --inverse-multiple 4096 --work 32 -z [128字符公钥]
 
 # 5. 终极性能模式（M4 Max 推荐设置）
@@ -648,9 +637,8 @@ python3 gen_eth_key.py
 
 **macOS 性能建议：**
 
-- 🔋 **电池模式**：使用较低的 inverse-multiple (4096-8192)
-- ⚡ **电源模式**：可以使用最高设置 (16384-32768)
-- 🌡️ **温度控制**：如果温度过高会自动降频，建议监控温度
+- ⚡ **高性能模式**：可以使用最高设置 (16384-32768)
+- 🔧 **调试模式**：使用较低的 inverse-multiple (4096-8192)
 - 📊 **性能监控**：使用活动监视器查看 GPU 使用率
 
 ## 📚 其他资源
