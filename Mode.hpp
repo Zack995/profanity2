@@ -33,6 +33,12 @@ class Mode {
 		static Mode numbers();
 		static Mode doubles();
 
+		static Mode maxSame(const char charTarget);
+		static Mode continuous(const char charTarget);
+
+		static Mode headTail(const std::string& headPattern, const std::string& tailPattern);
+		static Mode sandwich(const char targetChar, const int minHeadCount = 3, const int minTailCount = 3);
+
 		std::string name;
 
 		std::string kernel;

@@ -22,6 +22,10 @@ usage: ./profanity2 [OPTIONS]
   Modes with arguments:
     --leading <single hex>  Score on hashes leading with given hex character.
     --matching <hex string> Score on hashes matching given hex string.
+    -a, --max-same <hex>    Score on total count of specified character in hash.
+    -t, --continuous <hex>  Score on longest continuous sequence of specified character.
+    -H, --head-tail <pattern> Score on matching strings at head and tail (e.g., "888,fff" or "888-fff").
+    -S, --sandwich <char>   Score on same character at both head and tail (e.g., "8" for 8...8).
 
   Advanced modes:
     --contract              Instead of account address, score the contract
@@ -51,6 +55,10 @@ usage: ./profanity2 [OPTIONS]
     ./profanity2 --leading f -z HEX_PUBLIC_KEY_128_CHARS_LONG
     ./profanity2 --matching dead -z HEX_PUBLIC_KEY_128_CHARS_LONG
     ./profanity2 --matching badXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXbad -z HEX_PUBLIC_KEY_128_CHARS_LONG
+    ./profanity2 --max-same 8 -z HEX_PUBLIC_KEY_128_CHARS_LONG
+    ./profanity2 --continuous f -z HEX_PUBLIC_KEY_128_CHARS_LONG
+    ./profanity2 --head-tail 888,fff -z HEX_PUBLIC_KEY_128_CHARS_LONG
+    ./profanity2 --sandwich 8 -z HEX_PUBLIC_KEY_128_CHARS_LONG
     ./profanity2 --leading-range -m 0 -M 1 -z HEX_PUBLIC_KEY_128_CHARS_LONG
     ./profanity2 --leading-range -m 10 -M 12 -z HEX_PUBLIC_KEY_128_CHARS_LONG
     ./profanity2 --range -m 0 -M 1 -z HEX_PUBLIC_KEY_128_CHARS_LONG

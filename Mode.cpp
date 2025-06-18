@@ -1,5 +1,7 @@
 #include "Mode.hpp"
 #include <stdexcept>
+#include <algorithm>
+#include <string>
 
 Mode::Mode() : score(0) {
 
@@ -145,5 +147,55 @@ Mode Mode::doubles() {
 	Mode r;
 	r.name = "doubles";
 	r.kernel = "profanity_score_doubles";
+	return r;
+}
+
+Mode Mode::maxSame(const char charTarget) {
+	Mode r;
+	r.name = "maxsame";
+	r.kernel = "profanity_score_maxsame";
+	r.data1[0] = static_cast<cl_uchar>(hexValue(charTarget));
+	return r;
+}
+
+Mode Mode::continuous(const char charTarget) {
+	Mode r;
+	r.name = "continuous";
+	r.kernel = "profanity_score_continuous";
+	r.data1[0] = static_cast<cl_uchar>(hexValue(charTarget));
+	return r;
+}
+
+Mode Mode::headTail(const std::string& headPattern, const std::string& tailPattern) {
+	Mode r;
+	r.name = "headtail";
+	r.kernel = "profanity_score_headtail";
+	
+	// 清空数据
+	std::fill(r.data1, r.data1 + sizeof(r.data1), cl_uchar(0));
+	std::fill(r.data2, r.data2 + sizeof(r.data2), cl_uchar(0));
+	
+	// 设置头部模式
+	r.data1[0] = static_cast<cl_uchar>(std::min(headPattern.length(), size_t(10)));
+	for (size_t i = 0; i < headPattern.length() && i < 10; ++i) {
+		r.data1[1 + i] = static_cast<cl_uchar>(hexValue(headPattern[i]));
+	}
+	
+	// 设置尾部模式  
+	r.data2[0] = static_cast<cl_uchar>(std::min(tailPattern.length(), size_t(10)));
+	for (size_t i = 0; i < tailPattern.length() && i < 10; ++i) {
+		r.data2[1 + i] = static_cast<cl_uchar>(hexValue(tailPattern[i]));
+	}
+	
+	return r;
+}
+
+Mode Mode::sandwich(const char targetChar, const int minHeadCount, const int minTailCount) {
+	Mode r;
+	r.name = "sandwich";
+	r.kernel = "profanity_score_sandwich";
+	r.data1[0] = static_cast<cl_uchar>(hexValue(targetChar));
+	r.data1[1] = static_cast<cl_uchar>(minHeadCount);
+	r.data2[1] = static_cast<cl_uchar>(minTailCount);
 	return r;
 }

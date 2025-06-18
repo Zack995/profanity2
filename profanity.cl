@@ -314,7 +314,7 @@ void mp_mul_mod_word_sub(mp_number * const r, const mp_word w, const bool withMo
 // I have no idea, for the time being I'll leave it like this, also see the comments at the
 // beginning of this document under the title "Cutting corners".
 void mp_mod_mul(mp_number * const r, const mp_number * const X, const mp_number * const Y) {
-	mp_number Z = { {0} };
+	mp_number Z = { { {0} } };
 	mp_word extraWord;
 
 	for (int i = MP_WORDS - 1; i >= 0; --i) {
@@ -333,8 +333,8 @@ void mp_mod_mul(mp_number * const r, const mp_number * const X, const mp_number 
 
 // Modular inversion of a number. 
 void mp_mod_inverse(mp_number * const r) {
-	mp_number A = { { 1 } };
-	mp_number C = { { 0 } };
+	mp_number A = { { {1} } };
+	mp_number C = { { {0} } };
 	mp_number v = mod;
 
 	mp_word extraA = 0;
@@ -867,5 +867,196 @@ __kernel void profanity_score_doubles(__global mp_number * const pInverse, __glo
 		}
 	}
 
+	profanity_result_update(id, hash, pResult, score, scoreMax);
+}
+
+__kernel void profanity_score_maxsame(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMax) {
+	const size_t id = get_global_id(0);
+	__global const uchar * const hash = pInverse[id].d;
+	int score = 0;
+	
+	// 统计指定字符出现的总次数
+	uchar targetChar = data1[0];
+	
+	for (int i = 0; i < 20; ++i) {
+		// 检查高4位
+		if ((hash[i] & 0xF0) >> 4 == targetChar) {
+			++score;
+		}
+		// 检查低4位
+		if ((hash[i] & 0x0F) == targetChar) {
+			++score;
+		}
+	}
+
+	profanity_result_update(id, hash, pResult, score, scoreMax);
+}
+
+__kernel void profanity_score_continuous(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMax) {
+	const size_t id = get_global_id(0);
+	__global const uchar * const hash = pInverse[id].d;
+	int score = 0;
+	int maxContinuous = 0;
+	int currentContinuous = 0;
+	
+	uchar targetChar = data1[0];
+	
+	// 找到最长的连续相同字符序列
+	for (int i = 0; i < 20; ++i) {
+		// 检查高4位
+		if ((hash[i] & 0xF0) >> 4 == targetChar) {
+			currentContinuous++;
+		} else {
+			if (currentContinuous > maxContinuous) {
+				maxContinuous = currentContinuous;
+			}
+			currentContinuous = 0;
+		}
+		
+		// 检查低4位
+		if ((hash[i] & 0x0F) == targetChar) {
+			currentContinuous++;
+		} else {
+			if (currentContinuous > maxContinuous) {
+				maxContinuous = currentContinuous;
+			}
+			currentContinuous = 0;
+		}
+	}
+	
+	if (currentContinuous > maxContinuous) {
+		maxContinuous = currentContinuous;
+	}
+	
+	score = maxContinuous;
+	profanity_result_update(id, hash, pResult, score, scoreMax);
+}
+
+__kernel void profanity_score_headtail(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMax) {
+	const size_t id = get_global_id(0);
+	__global const uchar * const hash = pInverse[id].d;
+	int score = 0;
+	
+	// data1[0] = 头部字符串长度, data1[1-10] = 头部匹配模式
+	// data2[0] = 尾部字符串长度, data2[1-10] = 尾部匹配模式
+	int headPatternLen = data1[0];
+	int tailPatternLen = data2[0];
+	
+	if (headPatternLen == 0) headPatternLen = 1;
+	if (tailPatternLen == 0) tailPatternLen = 1;
+	if (headPatternLen > 10) headPatternLen = 10;  // 最多10个字符
+	if (tailPatternLen > 10) tailPatternLen = 10;
+	
+	int headMatched = 0;
+	int tailMatched = 0;
+	
+	// 检查头部匹配
+	for (int i = 0; i < headPatternLen; ++i) {
+		int byteIndex = i / 2;
+		int isHighNibble = (i % 2 == 0);
+		
+		if (byteIndex >= 20) break;
+		
+		uchar hashNibble, patternNibble;
+		if (isHighNibble) {
+			hashNibble = (hash[byteIndex] & 0xF0) >> 4;
+		} else {
+			hashNibble = hash[byteIndex] & 0x0F;
+		}
+		patternNibble = data1[1 + i];
+		
+		if (hashNibble == patternNibble) {
+			headMatched++;
+		} else {
+			break;
+		}
+	}
+	
+	// 检查尾部匹配（从后往前）
+	for (int i = 0; i < tailPatternLen; ++i) {
+		int nibbleFromEnd = i;
+		int byteIndex = 19 - (nibbleFromEnd / 2);
+		int isLowNibble = (nibbleFromEnd % 2 == 0);  // 从右边开始，先低位
+		
+		if (byteIndex < 0) break;
+		
+		uchar hashNibble, patternNibble;
+		if (isLowNibble) {
+			hashNibble = hash[byteIndex] & 0x0F;
+		} else {
+			hashNibble = (hash[byteIndex] & 0xF0) >> 4;
+		}
+		patternNibble = data2[1 + (tailPatternLen - 1 - i)];
+		
+		if (hashNibble == patternNibble) {
+			tailMatched++;
+		} else {
+			break;
+		}
+	}
+	
+	// 评分：头部匹配数 + 尾部匹配数
+	score = headMatched + tailMatched;
+	
+	// 只有完全匹配才算成功
+	if (headMatched == headPatternLen && tailMatched == tailPatternLen) {
+		score = 100;  // 完美匹配给高分
+	}
+	
+	profanity_result_update(id, hash, pResult, score, scoreMax);
+}
+
+__kernel void profanity_score_sandwich(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMax) {
+	const size_t id = get_global_id(0);
+	__global const uchar * const hash = pInverse[id].d;
+	int score = 0;
+	
+	uchar targetChar = data1[0];  // 要匹配的字符
+	int minHeadCount = data1[1];   // 最小头部数量
+	int minTailCount = data2[1];   // 最小尾部数量
+	
+	if (minHeadCount == 0) minHeadCount = 1;
+	if (minTailCount == 0) minTailCount = 1;
+	
+	int headCount = 0;
+	int tailCount = 0;
+	
+	// 计算头部连续字符数
+	for (int i = 0; i < 20; ++i) {
+		if ((hash[i] & 0xF0) >> 4 == targetChar) {
+			headCount++;
+		} else {
+			break;
+		}
+		
+		if ((hash[i] & 0x0F) == targetChar) {
+			headCount++;
+		} else {
+			break;
+		}
+	}
+	
+	// 计算尾部连续字符数
+	for (int i = 19; i >= 0; --i) {
+		if ((hash[i] & 0x0F) == targetChar) {
+			tailCount++;
+		} else {
+			break;
+		}
+		
+		if ((hash[i] & 0xF0) >> 4 == targetChar) {
+			tailCount++;
+		} else {
+			break;
+		}
+	}
+	
+	// 只有当头部和尾部都满足最小要求时才评分
+	if (headCount >= minHeadCount && tailCount >= minTailCount) {
+		score = headCount + tailCount;
+		// 避免全部都是目标字符时的重复计算
+		if (score > 40) score = 40;
+	}
+	
 	profanity_result_update(id, hash, pResult, score, scoreMax);
 }

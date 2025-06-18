@@ -161,6 +161,10 @@ int main(int argc, char * * argv) {
 		bool bModeRange = false;
 		bool bModeMirror = false;
 		bool bModeDoubles = false;
+		std::string strModeMaxSame;
+		std::string strModeContinuous;
+		std::string strModeHeadTail;
+		std::string strModeSandwich;
 		int rangeMin = 0;
 		int rangeMax = 0;
 		std::vector<size_t> vDeviceSkipIndex;
@@ -182,6 +186,10 @@ int main(int argc, char * * argv) {
 		argp.addSwitch('7', "range", bModeRange);
 		argp.addSwitch('8', "mirror", bModeMirror);
 		argp.addSwitch('9', "leading-doubles", bModeDoubles);
+		argp.addSwitch('a', "max-same", strModeMaxSame);
+		argp.addSwitch('t', "continuous", strModeContinuous);
+		argp.addSwitch('H', "head-tail", strModeHeadTail);
+		argp.addSwitch('S', "sandwich", strModeSandwich);
 		argp.addSwitch('m', "min", rangeMin);
 		argp.addSwitch('M', "max", rangeMax);
 		argp.addMultiSwitch('s', "skip", vDeviceSkipIndex);
@@ -227,6 +235,27 @@ int main(int argc, char * * argv) {
 			mode = Mode::doubles();
 		} else if (bModeZeroBytes) {
 			mode = Mode::zeroBytes();
+		} else if (!strModeMaxSame.empty()) {
+			mode = Mode::maxSame(strModeMaxSame.front());
+		} else if (!strModeContinuous.empty()) {
+			mode = Mode::continuous(strModeContinuous.front());
+		} else if (!strModeHeadTail.empty()) {
+			// 解析头尾模式，格式：head,tail 或 head-tail
+			size_t separatorPos = strModeHeadTail.find(',');
+			if (separatorPos == std::string::npos) {
+				separatorPos = strModeHeadTail.find('-');
+			}
+			
+			if (separatorPos != std::string::npos) {
+				std::string headPattern = strModeHeadTail.substr(0, separatorPos);
+				std::string tailPattern = strModeHeadTail.substr(separatorPos + 1);
+				mode = Mode::headTail(headPattern, tailPattern);
+			} else {
+				// 如果没有分隔符，使用相同的模式作为头尾
+				mode = Mode::headTail(strModeHeadTail, strModeHeadTail);
+			}
+		} else if (!strModeSandwich.empty()) {
+			mode = Mode::sandwich(strModeSandwich.front());
 		} else {
 			std::cout << g_strHelp << std::endl;
 			return 0;
