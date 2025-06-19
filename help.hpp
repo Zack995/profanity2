@@ -10,6 +10,11 @@ usage: ./profanity2 [OPTIONS]
     -z                      Seed public key to start, add it's private key
                             to the "profanity2" resulting private key.
 
+  Optional args:
+    -k, --seed-private-key  Seed private key (64 hex chars). If provided,
+                            the program will automatically calculate and
+                            display the final private key.
+
   Basic modes:
     --benchmark             Run without any scoring, a benchmark.
     --zeros                 Score on zeros anywhere in hash.

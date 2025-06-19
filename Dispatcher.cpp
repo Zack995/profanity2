@@ -1,4 +1,5 @@
 #include "Dispatcher.hpp"
+#include "bigint_calc.hpp"
 
 // Includes
 #include <stdexcept>
@@ -73,7 +74,7 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 	return r;
 }
 
-static void printResult(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode) {
+static void printResult(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode, const std::string & seedPrivateKey = "") {
 	// Time delta
 	const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
@@ -100,6 +101,22 @@ static void printResult(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score
 
 	std::cout << mode.transformName();
 	std::cout << ": 0x" << strPublic << std::endl;
+
+			// 如果提供了种子私钥，计算并输出最终私钥
+		if (!seedPrivateKey.empty()) {
+			try {
+				// 使用 BigIntCalc 计算最终私钥
+				std::string finalPrivateKey = BigIntCalc::calculateFinalPrivateKey(seedPrivateKey, strPrivate);
+				
+				if (!finalPrivateKey.empty()) {
+					std::cout << "  🔑 最终私钥: 0x" << finalPrivateKey << std::endl;
+				} else {
+					std::cout << "  ❌ 计算失败，使用: python3 calculate_final_key.py " << seedPrivateKey << " " << strPrivate << std::endl;
+				}
+			} catch (const std::exception& e) {
+				std::cout << "  ❌ 计算错误，使用: python3 calculate_final_key.py " << seedPrivateKey << " " << strPrivate << std::endl;
+			}
+		}
 }
 
 unsigned int getKernelExecutionTimeMicros(cl_event & e) {
@@ -201,7 +218,7 @@ Dispatcher::Device::~Device() {
 
 }
 
-Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey)
+Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey, const std::string & seedPrivateKey)
 	: m_clContext(clContext)
 	, m_clProgram(clProgram)
 	, m_mode(mode)
@@ -214,6 +231,7 @@ Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mod
 	, m_countPrint(0)
 	, m_publicKeyX(fromHex(seedPublicKey.substr(0, 64)))
 	, m_publicKeyY(fromHex(seedPublicKey.substr(64, 64)))
+	, m_seedPrivateKey(seedPrivateKey)
 {
 }
 
@@ -449,7 +467,7 @@ void Dispatcher::handleResult(Device & d) {
 					m_quit = true;
 				}
 
-				printResult(d.m_clSeed, d.m_round, r, i, timeStart, m_mode);
+				printResult(d.m_clSeed, d.m_round, r, i, timeStart, m_mode, m_seedPrivateKey);
 			}
 
 			break;

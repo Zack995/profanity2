@@ -174,6 +174,7 @@ int main(int argc, char * * argv) {
 		size_t inverseSize = 255;
 		size_t inverseMultiple = 16384;
 		bool bMineContract = false;
+		std::string strSeedPrivateKey; // 添加种子私钥参数
 
 		argp.addSwitch('h', "help", bHelp);
 		argp.addSwitch('0', "benchmark", bModeBenchmark);
@@ -200,6 +201,7 @@ int main(int argc, char * * argv) {
 		argp.addSwitch('I', "inverse-multiple", inverseMultiple);
 		argp.addSwitch('c', "contract", bMineContract);
 		argp.addSwitch('z', "publicKey", strPublicKey);
+		argp.addSwitch('k', "seed-private-key", strSeedPrivateKey); // 添加种子私钥参数
 		argp.addSwitch('b', "zero-bytes", bModeZeroBytes);
 
 		if (!argp.parse()) {
@@ -392,7 +394,7 @@ int main(int argc, char * * argv) {
 
 		std::cout << std::endl;
 
-		Dispatcher d(clContext, clProgram, mode, worksizeMax == 0 ? inverseSize * inverseMultiple : worksizeMax, inverseSize, inverseMultiple, 0, strPublicKey);
+		Dispatcher d(clContext, clProgram, mode, worksizeMax == 0 ? inverseSize * inverseMultiple : worksizeMax, inverseSize, inverseMultiple, 0, strPublicKey, strSeedPrivateKey);
 		for (auto & i : vDevices) {
 			d.addDevice(i, worksizeLocal, mDeviceIndex[i]);
 		}
